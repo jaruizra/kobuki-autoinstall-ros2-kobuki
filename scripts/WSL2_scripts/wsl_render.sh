@@ -1,22 +1,16 @@
 #!/bin/bash -i
 
-
-
-./scripts/WSL2_scripts/wsl_render.sh
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to enable cpu rendering."
+# Function to handle errors and exit
+handle_error() {
+    local status=$1
+    local message=$2
+    if [ $status -ne 0 ]; then
+        echo "$message"
         exit 1
     fi
-    # get new envoroment variables
-    source ~/.bashrc
-
-
-
-
+}
 
 # Ubuntu Shell is now interactive
-# eval "$(cat ~/.bashrc | grep export)"
 source ~/.bashrc
 
 # Check number of arguments
@@ -26,17 +20,11 @@ then
     exit 1
 fi
 
-# Check for sudo privileges, dischard output
-sudo -n true > /dev/null 2>&1
-
-# Check if sudo privileges were granted
-if [ $? -eq 0 ]
-then 
-    echo "You have sudo privileges"
-
+# Check for sudo privileges
+if sudo -n true > /dev/null 2>&1; then
+    echo "You have sudo privileges."
 else
-    echo "You dont have sudo privileges"
-    # Update sudo timestamp
+    echo "You don't have sudo privileges. Requesting privileges..."
     sudo -v
 fi
 
@@ -62,9 +50,6 @@ if grep -q "^# $DRIVER_SETTING" "$BASHRC";
 then
     # Descomenta el setting si acaso existe
     sed -i "/^# $DRIVER_SETTING/s/^# //" "$BASHRC"
-    #echo "" >> ~/.bashrc
-    #echo "# cpu render" >> ~/.bashrc
-    #echo "export GALLIUM_DRIVER=llvmpipe" >> ~/.bashrc
 else
     # Lo añade al script si no lo encuentra
     {

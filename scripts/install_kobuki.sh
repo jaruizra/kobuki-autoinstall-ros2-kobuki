@@ -27,11 +27,16 @@ fi
 
 # Check SWAP = minimum ram + swap = X GB
 
+# Check for sudo privileges
+if sudo -n true > /dev/null 2>&1; then
+    echo "You have sudo privileges."
+else
+    echo "You don't have sudo privileges. Requesting privileges..."
+    sudo -v
+fi
 
-
-# Instalar konsole
-# Packages to install
-packages="gnome-terminal"
+# Dependecnias to install
+packages="konsole, mesa-utils"
 
 echo
 echo "Installing dependencies ..."
@@ -45,43 +50,21 @@ do
     else
         echo "Installing package $p ... "
         sudo apt install -y $p
-
         # Check if package was installed succesfully
         handle_error $? "Package $p failed to install"
-        if [ $? -ne 0 ];
-        then
-            echo "Package $p failed to install"
-            exit 1
-        fi
-
         echo "Package $p installed."
     fi
 done
 
-
-
-
-
-
-
-# Check for sudo privileges, dischard output
-sudo -n true > /dev/null 2>&1
-
-# Check if sudo privileges were granted
-if [ $? -eq 0 ];
-then 
-    echo "You have sudo privileges"
-else
-    echo "You dont have sudo privileges"
-    # Update sudo timestamp
-    sudo -v
-fi
-
-# Enable cpu rendering for compatibility with gazebo
+# Setting up GPU rendering
 if ( unname -a | grep WSL );
 then
     echo "WSL2 detected, applying custom renderer for compatibility with gazebo"
-    echo "to do later"
+    ./WSL2_scripts/wsl_render.sh
+
+    handle_error $? "Failed to enable cpu rendering."
+    # get new envoroment variables
+    source ~/.bashrc
 
 else
     # Using normal installation of Ubuntu
@@ -91,20 +74,19 @@ else
     if ( ! lspci | grep -iq nvidia );
     then
         echo "Your laptop doesnt seem to have an nvidia gpu."
-        echo "Enabling cpu rendering."
-        ./scripts/WSL2_scripts/cpu_render.sh
-        if [ $? -ne 0 ]
-        then
-            echo "Failed to enable cpu rendering."
-            exit 1
-        fi
+        echo ""
+        echo "****"
+        echo "It could have very poor performace."
+        
         # getting new enviroment variables
         source ~/.bashrc
 
     else
         echo "Nvidia gpu detected. Checking if drivers are installed."
         
+        # Check if NVIDIA drivers are installed
         nvidia-smi > /dev/null
+
         # Nvidia gpu is not detected
         if [ $? -ne 0 ]
         then
@@ -157,11 +139,7 @@ if [ -f ./scripts/eif_repo_install.sh ]
 then
     echo "Attempting to install eif repo..."
     ./scripts/eif_repo_install.sh
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to install eif repo"
-        exit 1
-    fi
+    handle_error $? "Failed to install eif repo"
 fi
 
 # Check if system is running Ubuntu
@@ -172,30 +150,26 @@ then
     exit 1
 fi
 
-# Check if ROS 2 humble is installed and activated
+# Check if ROS 2 jazzy is installed and activated
 if [ ! $(command -v ros2) ]
 then
     # Check if ROS2 is installed
     if [ -d /opt/ros ]
     then
-        # Check if ROS 2 humble is installed
-        if [ -d /opt/ros/humble ]
+        # Check if ROS 2 jazzy is installed
+        if [ -d /opt/ros/jazzy ]
         then
-            # Check if ROS 2 humble is sourced
-            if ! grep -q "source /opt/ros/humble/setup.bash" ~/.bashrc
+            # Check if ROS 2 jazzy is sourced
+            if ! grep -q "source /opt/ros/jazzy/setup.bash" ~/.bashrc
             then
                 echo "" >> ~/.bashrc
                 echo "# ROS 2 underlay." >> ~/.bashrc
-                echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
-                . /opt/ros/humble/setup.bash
-                if [ $? -ne 0 ]
-                then
-                    echo "Failed to source ROS 2 humble."
-                    exit 1
-                fi
+                echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+                . /opt/ros/jazzy/setup.bash
+                handle_error $? "Failed to source ROS 2 jazzy."
             fi
         else
-            echo "ROS 2 humble is not installed"
+            echo "ROS 2 jazzy is not installed"
             exit 1
         fi
     else 
@@ -434,7 +408,7 @@ then
     rm /tmp/exit
 fi
 
-konsole -e /bin/bash -i -c 'source /opt/ros/humble/setup.bash; source ~/.bashrc; cd ~/ros2_ws; colcon build --symlink-install; echo $? > /tmp/exit; echo ; echo FINISHED' > /dev/null 2>&1
+konsole -e /bin/bash -i -c 'source /opt/ros/jazzy/setup.bash; source ~/.bashrc; cd ~/ros2_ws; colcon build --symlink-install; echo $? > /tmp/exit; echo ; echo FINISHED' > /dev/null 2>&1
 
 # Wait for a while for the process to potentially start
 sleep 5
@@ -471,7 +445,7 @@ echo
 echo "Running again colcon build to check for errors..."
 echo "Going to take some time, be patient. Grab a coffe."
 # Run a command in a new terminal and write its exit status to a temp file
-konsole -e /bin/bash -i -c 'source /opt/ros/humble/setup.bash; source ~/.bashrc; cd ~/ros2_ws; colcon build --symlink-install --parallel-workers 1; echo $? > /tmp/exit; echo ; echo FINISHED' > /dev/null 2>&1
+konsole -e /bin/bash -i -c 'source /opt/ros/jazzy/setup.bash; source ~/.bashrc; cd ~/ros2_ws; colcon build --symlink-install --parallel-workers 1; echo $? > /tmp/exit; echo ; echo FINISHED' > /dev/null 2>&1
 
 # Wait for a while for the process to potentially start
 sleep 5
