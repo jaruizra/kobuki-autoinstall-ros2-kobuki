@@ -1,0 +1,88 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-3ea04865d41ad44a4997.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "kobuki",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "fake_bumer_node::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-fake_bumer_node-Debug-963b29e0f5995c58af27.json",
+					"name" : "fake_bumer_node",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "kobuki::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-kobuki-Debug-dc8cfca9f56d49bc1e5d.json",
+					"name" : "kobuki",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "kobuki_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-kobuki_uninstall-Debug-875391f472c0f1c46d37.json",
+					"name" : "kobuki_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-Debug-8ae7dc74348d26fd3072.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build",
+		"source" : "/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

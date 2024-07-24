@@ -36,7 +36,7 @@ else
 fi
 
 # Dependecnias to install
-packages="konsole, mesa-utils"
+packages="konsole, mesa-utils, wget"
 
 echo
 echo "Installing dependencies ..."
@@ -85,7 +85,7 @@ else
         echo "Nvidia gpu detected. Checking if drivers are installed."
         
         # Check if NVIDIA drivers are installed
-        nvidia-smi > /dev/null
+        nvidia-smi > /dev/null 2>&1
 
         # Nvidia gpu is not detected
         if [ $? -ne 0 ]

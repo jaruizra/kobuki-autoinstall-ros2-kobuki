@@ -1,0 +1,11 @@
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/uninstall.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/kobuki_uninstall.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/kobuki.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/fake_bumer_node.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/test.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/edit_cache.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/rebuild_cache.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/list_install_components.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/install.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/install/local.dir
+/home/rura/trabajo/kobuki-autoinstall-ros2-kobuki/build/CMakeFiles/install/strip.dir
