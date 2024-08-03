@@ -37,12 +37,12 @@ enable_nvidia_rendering () {
     BASHRC="$HOME/.bashrc"
     DRIVER_SETTING="export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA"
 
-    if grep -q "^# $DRIVER_SETTING" "$BASHRC";
+    if grep -q "^# *$DRIVER_SETTING" "$BASHRC"
     then
-        # Descomenta el setting si acaso existe
-        sed -i "/^# $DRIVER_SETTING/s/^# //" "$BASHRC"
+        # Uncomment the setting if it exists
+        sed -i "/^# *$DRIVER_SETTING/s/^# *//" "$BASHRC"
     else
-        # Lo añade al script si no lo encuentra
+        # Add the setting to the script if not found
         {
             echo ""
             echo "# GPU RENDERING"
@@ -149,6 +149,7 @@ done
 
 # Ubuntu Shell is now interactive
 source ~/.bashrc
+handle_error $? "Failed to source ~/.bashrc"
 
 # Installing nvidia drivers, currently no other easy way to check if nvidia is on the system and enable it
 # Check if NVIDIA drivers are installed

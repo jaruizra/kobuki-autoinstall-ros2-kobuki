@@ -1,8 +1,141 @@
 #!/bin/bash -i
 
+# Variables
+BASHRC="$HOME/.bashrc"
 
-# Ubuntu Shell is none interactive
-source ~/.bashrc
+# Function to handle errors and exit
+handle_error() {
+    local status=$1
+    local message=$2
+    if [ $status -ne 0 ]
+    then
+        echo
+        echo "$message"
+        echo "Exiting..."
+        exit 1
+    fi
+}
+
+# Function to check for sudo privileges
+check_sudo() {
+    if ! sudo -n true > /dev/null 2>&1
+    then
+        echo "You don't have sudo privileges. Requesting privileges..."
+        sudo -v
+        handle_error $? "Failed to obtain sudo privileges."
+    fi
+}
+
+# Function to update package list
+update_packages() {
+    echo
+    echo "Running apt update..."
+    check_sudo
+    sudo apt update > /dev/null 2>&1
+    handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+    echo "sudo apt update finished."
+}
+
+# Function to set locale to UTF-8
+set_locale() {
+    echo
+    echo "Checking locale settings ..."
+    if locale | grep -q "UTF-8"
+    then
+        echo "Locale is already set to UTF-8."
+    else
+        # Updating packages
+        update_packages
+
+        # Installing locales package
+        sudo apt install -y locales > /dev/null 2>&1
+        handle_error $? "Failed to install locales"
+
+        # Generating Spanish UTF-8 locale
+        sudo locale-gen es_ES es_ES.UTF-8 > /dev/null 2>&1
+        handle_error $? "Failed to generate locale"
+
+        # Updating system wide locale settings
+        sudo update-locale LC_ALL=es_ES.UTF-8 LANG=es_ES.UTF-8 > /dev/null 2>&1
+        handle_error $? "Failed to update locale"
+
+        # Exporting the new locale setting for the current session
+        export LANG=es_ES.UTF-8
+
+        # Adding the locale setting to ~/.bashrc if not already present
+        if ! grep -q "export LANG=es_ES.UTF-8" ~/.bashrc
+        then
+            {
+                echo ""
+                echo "# Change language to UTF-8."
+                echo "export LANG=es_ES.UTF-8"
+            } >> "$BASHRC"
+        fi
+
+        # Verifying that the locale is set to UTF-8
+        locale | grep -q "UTF-8"
+        handle_error $? "Failed to set locale to UTF-8"
+    fi
+    echo "Locale is set to UTF-8."
+}
+
+# Function to enable the ROS 2 repository
+enable_repository() {
+    echo
+    echo "Adding ROS 2 repository..."
+
+    # Check for sudo privileges
+    check_sudo
+    
+    # Installing required package for adding repositories
+    sudo apt install -y software-properties-common > /dev/null 2>&1
+    handle_error $? "Failed to install software-properties-common."
+
+    # Enabling the Universe repository
+    sudo add-apt-repository -y universe > /dev/null 2>&1
+    handle_error $? "Failed to add universe repository."
+    echo "Ubuntu Universe repository is enabled."
+
+    # Updating package list
+    update_packages
+
+    # Installing curl to download ROS 2 GPG key
+    sudo apt install -y curl > /dev/null 2>&1
+    handle_error $? "Failed to install curl."
+
+    # Adding ROS 2 GPG key
+    sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg > /dev/null 2>&1
+    handle_error $? "Failed to add ROS 2 GPG key. Please check your network connection."
+
+    # Adding the ROS 2 repository to sources list
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null 2>&1
+    handle_error $? "Failed to add the repository to sources list."
+
+    echo "ROS 2 repository added."
+}
+
+# Function to check if ROS 2 is already sourced
+source_ros2() {
+    SOURCE_SETTING="source /opt/ros/jazzy/setup.bash"
+    
+    echo
+    echo "Checking if ROS 2 is already sourced in bashrc ..."
+
+    if grep -q "^# *$SOURCE_SETTING" "$BASHRC"
+    then
+        # Uncomment the setting if it exists
+        sed -i "/^# *$SOURCE_SETTING/s/^# *//" "$BASHRC"
+    else
+        # Add the setting to the script if not found
+        {
+            echo ""
+            echo "# ROS 2 underlay."
+            echo "$SOURCE_SETTING"
+        } >> "$BASHRC"
+    fi
+
+    echo "ROS2 Jazzy is sourced in bashrc."
+}
 
 # Check number of arguments
 if [ $# -ne 0 ]
@@ -11,211 +144,57 @@ then
     exit 1
 fi
 
-# Check if eif repo is already installed
-if [ -f ./scripts/eif_repo_install.sh ]
-then
-    echo "Attempting to install eif repo..."
-    ./scripts/eif_repo_install.sh
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to install eif repo"
-        exit 1
-    fi
-    echo "Eif repo installed successfully."
-fi
+# Ubuntu Shell is none interactive
+source "$BASHRC"
+handle_error $?  "Failed to source $BASHRC. Please check your bash configuration."
 
-# Check for sudo privileges, dischard output
-echo
-sudo -n true > /dev/null 2>&1
 
-# Check if sudo privileges were granted
-if [ $? -eq 0 ];
-then 
-    echo "You have sudo privileges"
+### System setup
 
-else
-    echo "You dont have sudo privileges"
-    # Update sudo timestamp
-    sudo -v
-fi
+# Set Locale
+set_locale
 
-# Update
-echo
-echo "Running apt update..."
-sudo apt update > /dev/null 2>&1
-echo "Apt update finished."
+# Enable required repositories
+enable_repository
 
-echo 
-echo "Checking locale settings ..."
-locale | grep LANG= | awk -F'=' '{ print $2 }' | grep -q "UTF-8"
+### Install ROS 2
 
-# Check if it is set to UTF-8
-if [ $? -eq 0 ]
-then
-    echo " "
+# Update apt repositories after adding ros2 repo
+update_packages
 
-else
-    sudo apt update && sudo apt install locales
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to install locales"
-        exit 1
-    fi
-
-    # Set locale to UTF-8
-    sudo locale-gen en_US en_US.UTF-8 
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to generate locale"
-        exit 1
-    fi
-
-    sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to update locale"
-        exit 1
-    fi
-
-    # tengo que ver como arreglar esto
-    export LANG=en_US.UTF-8    
-
-    echo "" >> ~/.bashrc
-    echo "# Change language to UTF-8." >> ~/.bashrc
-    echo "export LANG=en_US.UTF-8" >> ~/.bashrc
-
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to export LANG"
-        exit 1
-    fi
-
-    locale_var=$(locale | grep LANG= | awk -F'=' '{ print $2 }' | grep "UTF-8")
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to set locale to UTF-8"
-        exit 1
-    fi
-fi
-echo "Locale is set to UTF-8."
-
-# Check for sudo privileges, dischard output
-echo
-sudo -n true > /dev/null 2>&1
-
-# Check if sudo privileges were granted
-if [ $? -eq 0 ];
-then 
-    echo "You have sudo privileges"
-
-else
-    echo "You dont have sudo privileges"
-    # Update sudo timestamp
-    sudo -v
-fi
-
-# Update
-echo
-echo "Running apt update..."
-sudo apt update > /dev/null 2>&1
-echo "Apt update finished."
-
-# Add ros2 repository
-echo
-echo "Adding ROS 2 repository ..."
-sudo apt install -y software-properties-common > /dev/null 2>&1
-if [ $? -ne 0 ]
-then
-    echo "Failed to install software-properties-common"
-    exit 1
-fi
-sudo add-apt-repository -y universe > /dev/null 2>&1
-if [ $? -ne 0 ]
-then
-    echo "Failed to add universe repository"
-    exit 1
-fi
-echo "Ubuntu Universe repository is enabled."
-
-# Add ROS 2 GPG key with apt.
-sudo apt update && sudo apt install -y curl > /dev/null 2>&1
-if [ $? -ne 0 ]
-then
-    echo "Failed to install curl"
-    exit 1
-fi
-
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg > /dev/null 2>&1
-if [ $? -ne 0 ]
-then
-    echo "Failed to add ROS 2 GPG key"
-    exit 1
-fi
-
-# Add the repository to your sources list.
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null 2>&1
-if [ $? -ne 0 ]
-then
-    echo "Failed to add the repository to sources list."
-    exit 1
-fi
-
-echo "ROS 2 repository added."
-
-# Update apt repository
-echo
-echo "Running apt update..."
-sudo apt update > /dev/null 2>&1
-echo "Apt update finished."
-
-# Update Ubuntu packages for ROS 2 installation
+# Upgrade system packages
 echo
 echo "Upgrading Ubuntu packages ..."
 sudo apt upgrade -y > /dev/null 2>&1
-if [ $? -ne 0 ]
-then
-    echo "Failed to upgrade"
-    exit 1
-fi
+handle_error $? "Failed to upgrade."
 echo "Ubuntu packages upgraded."
 
+# Install ROS 2 Jazzy Desktop
 echo 
-echo 
-echo "About to install ROS 2 Desktop... \n"
+echo "About to install ROS 2 Desktop..."
+sudo apt install -y ros-jazzy-desktop > /dev/null 2>&1
+handle_error $? "Failed to install ROS 2 Jazzy Desktop."
+echo "ROS2 Jazzy Installation succesful."
 
-# Install ROS 2 Desktop
-sudo apt install -y ros-humble-desktop
 
-if [ $? -ne 0 ]
-then
-    echo "Failed to install ROS 2 Desktop"
-    exit 1
-fi
-
-echo
-echo "ROS2 Installation succesful. \n"
+### Setup environment
 
 # Check if its already sourced
+source_ros2
+
+# Source ROS 2 setup script for the current session
 echo
-echo "Checking if ROS 2 is already sourced in bashrc ..."
+echo "Sourcing ROS 2 setup script for the current session..."
+source /opt/ros/jazzy/setup.bash
 
-# Check if ROS 2 is already sourced in bashrc
-if cat ~/.bashrc | grep -q "source /opt/ros/humble/setup.bash"
-then
-    if ! cat ~/.bashrc | grep "source /opt/ros/humble/setup.bash" | grep -q "#"
-    then
-        echo "" >> ~/.bashrc
-        echo "# ROS 2 underlay." >> ~/.bashrc
-        echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
-    fi
-else
-    echo "" >> ~/.bashrc
-    echo "# ROS 2 underlay." >> ~/.bashrc
-    echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
-fi
-
-source /opt/ros/humble/setup.bash
-
+# Final message to user
+clear
 echo
-echo -e "ROS 2 has finished installing, try to run \n \n \t source ~/.bashrc \n \n to source ROS 2 in your current shell. And check if when typing: \n \n \t ros2 \n \n you get a list of commands. \n"
-echo -e "\n If you have any issues, please refer to the ROS 2 documentation. Or try to run the script again. :) Bye. \n"
+echo -e "ROS 2 has finished installing. To use ROS 2 in your current shell, run:\n"
+echo -e "\tsource ~/.bashrc\n"
+echo
+echo -e "Then, verify the installation by typing:\n"
+echo -e "\tros2\n"
+echo
+echo -e "If you encounter any issues, please refer to the ROS 2 documentation or try running the script again."
+echo -e "Goodbye! :)"
