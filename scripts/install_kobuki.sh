@@ -6,7 +6,9 @@ handle_error() {
     local message=$2
     if [ $status -ne 0 ]
     then
+        echo
         echo "$message"
+        echo "Exiting..."
         exit 1
     fi
 }

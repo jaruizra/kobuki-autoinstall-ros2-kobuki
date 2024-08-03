@@ -1,25 +1,39 @@
 #!/bin/bash -i
 
+# Variables
+BASHRC="$HOME/.bashrc"
+
 # Function to handle errors and exit
 handle_error() {
     local status=$1
     local message=$2
     if [ $status -ne 0 ]
     then
+        echo
         echo "$message"
+        echo "Exiting..."
         exit 1
+    fi
+}
+
+# Function to check for sudo privileges
+check_sudo() {
+    if ! sudo -n true > /dev/null 2>&1
+    then
+        echo "You don't have sudo privileges. Requesting privileges..."
+        sudo -v
+        handle_error $? "Failed to obtain sudo privileges."
     fi
 }
 
 # Function to enable CPU rendering
 enable_cpu_rendering () {
-    BASHRC="$HOME/.bashrc"
     DRIVER_SETTING="export GALLIUM_DRIVER=llvmpipe"
 
-    if grep -q "^# $DRIVER_SETTING" "$BASHRC";
+    if grep -q "^# *$DRIVER_SETTING" "$BASHRC";
     then
         # Uncomment the setting if it exists
-        sed -i "/^# $DRIVER_SETTING/s/^# //" "$BASHRC"
+        sed -i "/^# *$DRIVER_SETTING/s/^# *//" "$BASHRC"
     else
         # Add the setting to the .bashrc file if not present
         {
@@ -28,16 +42,14 @@ enable_cpu_rendering () {
             echo "$DRIVER_SETTING"
         } >> "$BASHRC"
     fi
-    return 0
 }
 
 # Function to enable NVIDIA rendering
 enable_nvidia_rendering () {
     # Check if GALLIUM_DRIVER is set in .bashrc
-    BASHRC="$HOME/.bashrc"
     DRIVER_SETTING="export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA"
 
-    if grep -q "^# *$DRIVER_SETTING" "$BASHRC"
+    if grep -q "^# *$DRIVER_SETTING" "$BASHRC";
     then
         # Uncomment the setting if it exists
         sed -i "/^# *$DRIVER_SETTING/s/^# *//" "$BASHRC"
@@ -49,7 +61,6 @@ enable_nvidia_rendering () {
             echo "$DRIVER_SETTING"
         } >> "$BASHRC"
     fi
-    return 0
 }
 
 # Function to handle user input
@@ -79,7 +90,8 @@ test_gpu () {
     echo "If the box shows a black screen, please reply 'Y'."
 
     # Remove /tmp/konsolepid if it exists
-    if [ -f /tmp/konsolepid ]; then
+    if [ -f /tmp/konsolepid ]
+    then
         rm /tmp/konsolepid
         handle_error $? "Unable to remove /tmp/konsolepid file."
     fi
@@ -119,12 +131,7 @@ then
 fi
 
 # Check for sudo privileges
-if sudo -n true > /dev/null 2>&1; then
-    echo "You have sudo privileges."
-else
-    echo "You don't have sudo privileges. Requesting privileges..."
-    sudo -v
-fi
+check_sudo
 
 # Dependencies to install
 packages="konsole mesa-utils wget"
@@ -148,8 +155,8 @@ do
 done
 
 # Ubuntu Shell is now interactive
-source ~/.bashrc
-handle_error $? "Failed to source ~/.bashrc"
+source "$BASHRC"
+handle_error $? "Failed to source $BASHRC"
 
 # Installing nvidia drivers, currently no other easy way to check if nvidia is on the system and enable it
 # Check if NVIDIA drivers are installed
@@ -157,6 +164,9 @@ nvidia-smi > /dev/null 2>&1
 
 if [ $? -ne 0 ]
 then
+    # Check for sudo privileges
+    check_sudo
+
     # it failed, triying to install nvidia-smi
     wget -P "/tmp" https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb
     handle_error $? "Failed to get nvidia keyring"
