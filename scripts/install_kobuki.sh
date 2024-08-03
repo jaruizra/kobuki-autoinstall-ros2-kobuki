@@ -4,14 +4,12 @@
 handle_error() {
     local status=$1
     local message=$2
-    if [ $status -ne 0 ]; then
+    if [ $status -ne 0 ]
+    then
         echo "$message"
         exit 1
     fi
 }
-
-# Ubuntu Shell is none interactive
-source ~/.bashrc
 
 # Check number of arguments
 if [ $# -ne 0 ]
@@ -19,6 +17,10 @@ then
     echo "This script does not take any arguments."
     exit 1
 fi
+
+# Ubuntu Shell is none interactive
+source ~/.bashrc
+
 
 
 
