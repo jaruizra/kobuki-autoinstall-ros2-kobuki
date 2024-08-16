@@ -1,96 +1,47 @@
-# Kobuki from the Intelligent Robotics Lab using ROS 2
+# Kobuki fork from the Intelligent Robotics Lab using ROS 2
 
 ![distro](https://img.shields.io/badge/Ubuntu%2022-Jammy%20Jellyfish-green)
 ![distro](https://img.shields.io/badge/ROS2-Humble-blue)
 
-This project contains the launchers to run the [Turtlebot2 Kobuki](https://github.com/kobuki-base), both in simulated running different Gazebo worlds, as in the real robot using its drivers.
+In this project, I have added installation scripts for ROS 2 Jazzy and Kobuki.
 
-# Installation on your own computer
-You need to have previously installed ROS2. Please follow this [guide](https://docs.ros.org/en/humble/Installation.html) if you don't have it.
+# Installation on Your Own Computer
+
+## First, Clone the Repository to Your Computer
+Run the following commands:
 ```bash
-source /opt/ros/humble/setup.bash
+git clone https://github.com/jaruizra/kobuki-autoinstall-ros2-kobuki.git
+cd kobuki-autoinstall-ros2-kobuki
+cd scripts
+chmod +x ./*
 ```
 
-Clone the repository to your workspace:
+## Installing ROS 2 Jazzy
+Once you have installed ROS 2 Jazzy, you don't need to do it again unless you remove it from your computer. To install ROS 2 Jazzy, run:
 ```bash
-cd <ros2-workspace>/src
-git clone https://github.com/IntelligentRoboticsLabs/kobuki.git
+./install_ros2.sh
 ```
 
-Prepare your thirparty repos:
-```bash
-sudo apt update
-sudo apt install python3-vcstool python3-pip python3-rosdep python3-colcon-common-extensions -y
-cd <ros2-workspace>/src/
-vcs import < kobuki/thirdparty.repos
-```
-*Please make sure that this last command has not failed. If this happens, run it again.*
 
-### Install libusb, libftdi & libuvc
+## Clone, Prepare, and Install the Kobuki Package
+
+This fork of the project was created to simplify the installation and setup process for the Kobuki package. The provided script prepares everything, compiles the Kobuki package, and adds Gazebo to your `.bashrc` so that it runs every time you open a new shell.
+
+The script also sets up the NVIDIA driver if you have an NVIDIA GPU. If you have a different GPU, the script will attempt to make it work; otherwise, it will use CPU rendering. This decision was made to improve the performance of the project.
+
+To run the installer, execute:
 ```bash
-sudo apt install libusb-1.0-0-dev libftdi1-dev libuvc-dev
+./install_kobuki.sh
 ```
 
-### Install udev rules from astra camera, kobuki and rplidar
-When you connect a piece of hardware to your pc, it assigns `/dev/ttyUSB*` to it. This will not have the necessary read/write permissions, so we will not be able to use it correctly. The solution is to set up some udev rules that creates a symlink with another name (example: `/dev/ttyUSB0` -> `/dev/kobuki`) and grants it the necessary permissions.
-```bash
-cd <ros2-workspace>
-sudo cp src/ThirdParty/ros_astra_camera/astra_camera/scripts/56-orbbec-usb.rules /etc/udev/rules.d/
-sudo cp src/ThirdParty/rplidar_ros/scripts/rplidar.rules /etc/udev/rules.d/
-sudo cp src/ThirdParty/kobuki_ros/60-kobuki.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules && sudo udevadm trigger
-```
-
-### Move xtion calibration
-Some cameras need a calibration file where they indicate, for example, their resolution, name, etc...
-```bash
-mkdir -p ~/.ros/camera_info
-cp <ros2-workspace>/src/ThirdParty/openni2_camera/openni2_camera/rgb_PS1080_PrimeSense.yaml ~/.ros/camera_info
-```
-
-### Building project
-```bash
-sudo rosdep init
-rosdep update
-rosdep install --from-paths src --ignore-src -r -y
-colcon build --symlink-install 
-```
-
->  If your terminal has crashed or closed while compiling, please try compiling your packages as follows `colcon build --symlink-install --parallel-workers 1` or do so by selecting the package that failed `colcon build --symlink-install --parallel-workers 1 --packages-select <package>`
-> 
-> Also, if you want to prevent it from recompiling that package, add a `COLCON_IGNORE` inside the package
-
-### Setup Gazebo to find models - GAZEBO_MODEL_PATH and project path
-```bash
-source /usr/share/gazebo/setup.bash
-source <ros2-workspace>/install/setup.bash
-```
-*It is recommended to add these two lines inside your `.bashrc` to avoid having to run it every time you open a new shell*
-
-# Run the robot in ROS 2
-## Run Gazebo
-You can launch the simulator as follows:
-```bash
-ros2 launch kobuki simulation.launch.py
-```
-Or you can add the path of your world to the world parameter like this:
-```bash
-ros2 launch kobuki simulation.launch.py world:=install/aws_robomaker_small_warehouse_world/share/aws_robomaker_small_warehouse_world/worlds/small_warehouse/small_warehouse.world
-``` 
-
-If you have a low performance, close the Gazebo's client. Check gzclient process, and kill it:
-```bash
-kill -9 `pgrep -f gzclient`
-``` 
-
-## Run a real kobuki
+## Running a real Kobuki
 Run the kobuki drivers:
 
 ```bash
 ros2 launch kobuki kobuki.launch.py
 ``` 
 
-If you want to use a lidar or camera, you have to set the following parameters to True:
+If you want to use a lidar or camera, you have to set the following parameters to `True`:
 ```bash
 ros2 launch kobuki kobuki.launch.py lidar:=True
 ros2 launch kobuki kobuki.launch.py lidar_s2:=True
@@ -98,21 +49,18 @@ ros2 launch kobuki kobuki.launch.py xtion:=True
 ros2 launch kobuki kobuki.launch.py astra:=True
 ``` 
 
-# Run Navigation in ROS 2
+### Explanation
+There are two types of cameras and two types of lidar sensors that you can find in the laboratory:
 
-You can use [Nav2] using robot with this launcher:
+**Cameras:**
+- **xtion**: This parameter enables the Xtion camera.
+- **astra**: This parameter enables the Astra camera.
 
-```bash
-ros2 launch kobuki navigation.launch.py map:=<path-to-map>
-``` 
+**Lidar Sensors:**
+- **lidar**: This parameter enables the standard lidar sensor.
+- **lidar_s2**: This parameter enables the S2 lidar sensor.
 
-or this other command if you need to navigate in the simulator
-```bash
-ros2 launch kobuki navigation_sim.launch.py
-```
-
-If you want to use another map, you have to put the route in the map parameter
-
+Ask the lab technician or professor which camera and lidar you have and use the options you need for your Kobuki.
 
 # About
 
@@ -122,7 +70,6 @@ Copyright &copy; 2024.
 Maintainers:
 
 * [Juan Carlos Manzanares]
-
 
 [Universidad Rey Juan Carlos]: https://www.urjc.es/
 [Intelligent Robotics Lab]: https://intelligentroboticslab.gsyc.urjc.es/
