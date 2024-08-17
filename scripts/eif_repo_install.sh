@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Function to handle errors and exit
+handle_error() {
+    local status=$1
+    local message=$2
+    if [ $status -ne 0 ]
+    then
+        echo
+        #   echo -e "$message"
+        echo "$(status_prompt "$ERROR" "$message")"
+        echo "Exiting..."
+        exit 1
+    fi
+}
+
 # Function to source additional functions and variables
 source_functions() {
     FUNCTIONS_PATH="./scripts/functions.sh"
@@ -36,9 +50,12 @@ fi
 
 # Check for sudo privileges
 check_sudo
+handle_error $? "Failed to obtain sudo privileges."
 
 # Update packages
 update_packages
+handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+echo "sudo apt update finished."
 
 # Install wget
 sudo apt install -y wget > /dev/null 2>&1
@@ -54,6 +71,8 @@ handle_error $? "Failed to add eif repo to sources list."
 
 # Update packages again
 update_packages
+handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+echo "sudo apt update finished."
 
 status_prompt $OK "Eif repo installation completed successfully."
 exit 0

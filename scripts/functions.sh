@@ -10,20 +10,6 @@ ORANGE=$(tput setaf 166)
 # Variables
 BASHRC="$HOME/.bashrc"
 
-# Function to handle errors and exit
-handle_error() {
-    local status=$1
-    local message=$2
-    if [ $status -ne 0 ]
-    then
-        echo
-        #   echo -e "$message"
-        echo "$(status_prompt "$ERROR" "$message")"
-        echo "Exiting..."
-        exit 1
-    fi
-}
-
 # Function to check for sudo privileges
 check_sudo() {
     if ! sudo -n true > /dev/null 2>&1
@@ -31,7 +17,6 @@ check_sudo() {
         echo "$(status_prompt "$NOTE" "You don't have sudo privileges. Requesting privileges...")"
         #echo "You don't have sudo privileges. Requesting privileges..."
         sudo -v
-        handle_error $? "Failed to obtain sudo privileges."
     fi
 }
 
@@ -41,10 +26,7 @@ update_packages() {
     echo "Running apt update..."
     check_sudo
     sudo apt update > /dev/null 2>&1
-    handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
-    echo "sudo apt update finished."
 }
-NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
 
 # Function to colorize prompts
 colorize_prompt() {

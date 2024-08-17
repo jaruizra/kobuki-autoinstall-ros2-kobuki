@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Function to handle errors and exit
+handle_error() {
+    local status=$1
+    local message=$2
+    if [ $status -ne 0 ]
+    then
+        echo
+        #   echo -e "$message"
+        echo "$(status_prompt "$ERROR" "$message")"
+        echo "Exiting..."
+        exit 1
+    fi
+}
+
 # Function to source additional functions and variables
 source_functions() {
     FUNCTIONS_PATH="./scripts/functions.sh"
@@ -167,6 +181,9 @@ then
     handle_error $? "Failed to install /tmp/cuda-keyring_1.1-1_all.deb"
 
     update_packages
+    handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+    echo "sudo apt update finished."
+
     sudo apt-get -y install cuda-toolkit-12-5
     handle_error $? "Failed to install cuda-toolkit-12-5"
     status_prompt $OK "nvidia driver succesfully installed."

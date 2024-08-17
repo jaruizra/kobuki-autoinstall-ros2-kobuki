@@ -1,5 +1,19 @@
 #!/bin/bash -i
 
+# Function to handle errors and exit
+handle_error() {
+    local status=$1
+    local message=$2
+    if [ $status -ne 0 ]
+    then
+        echo
+        #   echo -e "$message"
+        echo "$(status_prompt "$ERROR" "$message")"
+        echo "Exiting..."
+        exit 1
+    fi
+}
+
 # Function to source additional functions and variables
 source_functions() {
     FUNCTIONS_PATH="./scripts/functions.sh"
@@ -17,6 +31,8 @@ set_locale() {
     else
         # Updating packages
         update_packages
+        handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+        echo "sudo apt update finished."
 
         # Installing locales package
         sudo apt install -y locales > /dev/null 2>&1
@@ -69,6 +85,8 @@ enable_repository() {
 
     # Updating package list
     update_packages
+    handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+    echo "sudo apt update finished."
 
     # Installing curl to download ROS 2 GPG key
     sudo apt install -y curl > /dev/null 2>&1
@@ -140,6 +158,8 @@ enable_repository
 
 # Update apt repositories after adding ros2 repo
 update_packages
+handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+echo "sudo apt update finished."
 
 # Upgrade system packages
 echo

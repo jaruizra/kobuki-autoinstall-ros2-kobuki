@@ -1,10 +1,37 @@
 #!/bin/bash -i
 
+# Function to handle errors and exit
+handle_error() {
+    local status=$1
+    local message=$2
+    if [ $status -ne 0 ]
+    then
+        echo
+        #   echo -e "$message"
+        echo "$(status_prompt "$ERROR" "$message")"
+        echo "Exiting..."
+        exit 1
+    fi
+}
+
 source_functions() {
     FUNCTIONS_PATH="./scripts/functions.sh"
     source "$FUNCTIONS_PATH"
     handle_error $? "Failed to source $FUNCTIONS_PATH. Please check the file."
 }
+
+# Source functions and variables
+source_functions
+
+# Source .bashrc for environment variables
+source "$BASHRC"
+handle_error $? "Failed to source "$BASHRC"."
+
+clear
+
+# Start message
+colorize_prompt $NOTE "Attempting to install EIF repo..."
+
 # Check number of arguments
 if [ $# -ne 0 ]
 then
@@ -17,10 +44,6 @@ if [[ $EUID -eq 0 ]]; then
     echo "This script should not be executed as root! Exiting......."
     exit 1
 fi
-
-# Ubuntu Shell is none interactive
-source "$BASHRC"
-handle_error $?  "Failed to source $BASHRC. Please check your bash configuration."
 
 # Source functions and variables
 source_functions
@@ -92,9 +115,6 @@ do
     fi
 done
 
-echo $nvidia
-read
-
 # Setting up GPU rendering
 if [ $nvidia == "Y" ];
 then
@@ -104,6 +124,7 @@ then
         ./scripts/wsl_render.sh
 
         handle_error $? "Failed to enable cpu rendering."
+
         # get new enviroment variables
         source ~/.bashrc
 
@@ -247,11 +268,15 @@ echo "kobuki repository cloned successfully."
 
 # Check for sudo privileges, dischard output
 check_sudo
+handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+echo "sudo apt update finished."
 
 # Prepare thirdparty repos
 echo
 echo "Preparing thirdparty repos python3 modules ..."
 update_packages
+handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+echo "sudo apt update finished."
 sudo apt install -y python3-vcstool python3-pip python3-rosdep python3-colcon-common-extensions
 handle_error $? "Failed to install python3 modules"
 
@@ -289,6 +314,8 @@ echo "Installing udev rules from astra camera, kobuki and rplidar..."
 
 # Check for sudo privileges, dischard output
 check_sudo
+handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+echo "sudo apt update finished."
 
 cd ~/ros2_ws
 if [ ! -f /etc/udev/rules.d/56-orbbec-usb.rules ]
