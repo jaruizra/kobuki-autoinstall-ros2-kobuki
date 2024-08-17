@@ -33,6 +33,8 @@ set_locale() {
         update_packages
         handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
         echo "sudo apt update finished."
+        handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
+        echo "sudo apt update finished."
 
         # Installing locales package
         sudo apt install -y locales > /dev/null 2>&1
@@ -73,7 +75,8 @@ enable_repository() {
 
     # Check for sudo privileges
     check_sudo
-    
+    handle_error $? "Failed to obtain sudo privileges."
+
     # Installing required package for adding repositories
     sudo apt install -y software-properties-common > /dev/null 2>&1
     handle_error $? "Failed to install software-properties-common."

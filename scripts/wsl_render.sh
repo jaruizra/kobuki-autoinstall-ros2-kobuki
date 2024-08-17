@@ -140,6 +140,7 @@ fi
 
 # Check for sudo privileges
 check_sudo
+handle_error $? "Failed to obtain sudo privileges."
 
 # Dependencies to install
 packages="konsole mesa-utils wget"
@@ -172,6 +173,7 @@ then
     status_prompt $NOTE "Nvidia drivers might not be installed, installing..."
     # Check for sudo privileges
     check_sudo
+    handle_error $? "Failed to obtain sudo privileges."
 
     # it failed, triying to install nvidia-smi
     wget -P "/tmp" https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb

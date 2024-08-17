@@ -30,7 +30,7 @@ handle_error $? "Failed to source "$BASHRC"."
 clear
 
 # Start message
-colorize_prompt $NOTE "Attempting to install EIF repo..."
+status_prompt $NOTE "Attempting to install EIF repo..."
 
 # Check number of arguments
 if [ $# -ne 0 ]
@@ -93,6 +93,7 @@ fi
 
 # Check for sudo privileges
 check_sudo
+handle_error $? "Failed to obtain sudo privileges."
 
 # Dependecnias to install
 packages="konsole mesa-utils wget"
@@ -268,8 +269,7 @@ echo "kobuki repository cloned successfully."
 
 # Check for sudo privileges, dischard output
 check_sudo
-handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
-echo "sudo apt update finished."
+handle_error $? "Failed to obtain sudo privileges."
 
 # Prepare thirdparty repos
 echo
@@ -314,8 +314,7 @@ echo "Installing udev rules from astra camera, kobuki and rplidar..."
 
 # Check for sudo privileges, dischard output
 check_sudo
-handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
-echo "sudo apt update finished."
+handle_error $? "Failed to obtain sudo privileges."
 
 cd ~/ros2_ws
 if [ ! -f /etc/udev/rules.d/56-orbbec-usb.rules ]
@@ -526,6 +525,7 @@ echo "Trying to launch gazebo kobuki simulation in a new terminal ..."
 echo "If gazebo fails to launch, try to load a new terminal and run ros2 launch kobuki simulation.launch.py again."
 echo "If it also fails try to re-run the script or manyally installing from scratch kobuki."
 echo "You can follow all steps from https://github.com/IntelligentRoboticsLabs/kobuki"
+colorize_prompt 4 "Goodbye! :)"
 echo 
 
 # Try to launch gazebo kobuki simulation
