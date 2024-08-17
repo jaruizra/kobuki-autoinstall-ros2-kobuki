@@ -1,18 +1,10 @@
 #!/bin/bash -i
 
-# Function to handle errors and exit
-handle_error() {
-    local status=$1
-    local message=$2
-    if [ $status -ne 0 ]
-    then
-        echo
-        echo "$message"
-        echo "Exiting..."
-        exit 1
-    fi
+source_functions() {
+    FUNCTIONS_PATH="./scripts/functions.sh"
+    source "$FUNCTIONS_PATH"
+    handle_error $? "Failed to source $FUNCTIONS_PATH. Please check the file."
 }
-
 # Check number of arguments
 if [ $# -ne 0 ]
 then
@@ -20,27 +12,67 @@ then
     exit 1
 fi
 
-# Ubuntu Shell is none interactive
-source ~/.bashrc
-
-
-
-
-# Check user pc specs
-# Check ram
-
-# Check SWAP = minimum ram + swap = X GB
-
-# Check for sudo privileges
-if sudo -n true > /dev/null 2>&1; then
-    echo "You have sudo privileges."
-else
-    echo "You don't have sudo privileges. Requesting privileges..."
-    sudo -v
+# Check if running as root. If root, script will exit
+if [[ $EUID -eq 0 ]]; then
+    echo "This script should not be executed as root! Exiting......."
+    exit 1
 fi
 
+# Ubuntu Shell is none interactive
+source "$BASHRC"
+handle_error $?  "Failed to source $BASHRC. Please check your bash configuration."
+
+# Source functions and variables
+source_functions
+
+clear 
+
+printf "\n%.0s" {1..3}
+colorize_prompt 6 "/////////////////////////////////"
+colorize_prompt 6 "  __  _     _        _   _   _ "
+colorize_prompt 6 "   | |_| _ |_| | | |  / |_| |_|"
+colorize_prompt 6 " \_| | |   | \ |_| | /_ | \ | |" 
+echo
+colorize_prompt 6 "/////////////////////////////////"
+printf "\n%.0s" {1..3}
+
+# Welcome message
+colorize_prompt 166 "Welcome to Jaruizra Kobuki installation script!"
+echo
+status_prompt $NOTE "You should keep atention for script asking user inputs."
+echo
+status_prompt $ATT "Run a full system update, upgrade and then reboot before executing the script! (Highly Recommended)"
+echo
+
+# Initialize variables to store user responses
+nvidia=""
+
+# Collect user responses to all questions
+printf "\n%.0s" {1..3}
+status_prompt $ATT "ANSWER THE FOLOWING QUESTIONS RELATED TO THE SCRIPT FUNCTIONALITY!"
+echo
+ask_yes_no "Do you want the setup to try and setup install Nvidida gpu drivers(if using wsl2 you should do it)" nvidia
+
+# Check system memory
+MEM=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+MEM=$(echo "scale=2; $MEM / 1000000" | bc)
+
+SWAP=$(grep SwapTotal /proc/meminfo | awk '{print $2}')
+SWAP=$(echo "scale=2; $SWAP / 1000000" | bc)
+
+# Check if total memory and swap is less than 16GB
+TOTAL_MEM=$(echo "$MEM + $SWAP" | bc)
+if (( $(echo "$TOTAL_MEM < 16" | bc -l) )); then
+    echo
+    status_prompt $NOTE "Your system memory (ram + swap) is lower than 16GB, you have $TOTAL_MEM GB. Compiling could have errors."
+fi
+
+
+# Check for sudo privileges
+check_sudo
+
 # Dependecnias to install
-packages="konsole, mesa-utils, wget"
+packages="konsole mesa-utils wget"
 
 echo
 echo "Installing dependencies ..."
@@ -60,80 +92,86 @@ do
     fi
 done
 
+echo $nvidia
+read
+
 # Setting up GPU rendering
-if ( unname -a | grep WSL );
+if [ $nvidia == "Y" ];
 then
-    echo "WSL2 detected, applying custom renderer for compatibility with gazebo"
-    ./WSL2_scripts/wsl_render.sh
-
-    handle_error $? "Failed to enable cpu rendering."
-    # get new envoroment variables
-    source ~/.bashrc
-
-else
-    # Using normal installation of Ubuntu
-    echo ""
-
-    # Check if NVIDIA GPU is present
-    if ( ! lspci | grep -iq nvidia );
+    if ( uname -a | grep WSL );
     then
-        echo "Your laptop doesnt seem to have an nvidia gpu."
-        echo ""
-        echo "****"
-        echo "It could have very poor performace."
-        
-        # getting new enviroment variables
+        echo "WSL2 detected, applying custom renderer for compatibility with gazebo"
+        ./scripts/wsl_render.sh
+
+        handle_error $? "Failed to enable cpu rendering."
+        # get new enviroment variables
         source ~/.bashrc
 
     else
-        echo "Nvidia gpu detected. Checking if drivers are installed."
-        
-        # Check if NVIDIA drivers are installed
-        nvidia-smi > /dev/null 2>&1
+        # Using normal installation of Ubuntu
+        echo ""
 
-        # Nvidia gpu is not detected
-        if [ $? -ne 0 ]
+        # Check if NVIDIA GPU is present
+        if ( ! lspci | grep -iq nvidia );
         then
-            echo "Nvidia gpu drivers are not installed."
-            echo "Triying to install gpu drivers..."
-
-            # Check for sudo privileges, dischard output
-            sudo -n true > /dev/null 2>&1
-
-            # Check for sudo privileges
-            if sudo -n true > /dev/null 2>&1; then
-                echo "You have sudo privileges."
-            else
-                echo "You don't have sudo privileges. Requesting privileges..."
-                sudo -v
-            fi
-
-            # Install NVIDIA drivers
-            sudo ubuntu-drivers install
-            handle_error $? "Failed to automatically install NVIDIA drivers. Please install them manually and re-run this script."
-
-
-            echo "Nvidia drivers succesfully installed."
-
-            # reload enviroment variables
+            echo "Your laptop doesnt seem to have an nvidia gpu."
+            echo ""
+            echo "****"
+            echo "It could have very poor performace."
+            
+            # getting new enviroment variables
             source ~/.bashrc
 
-            # Verify NVIDIA driver installation
+        else
+            echo "Nvidia gpu detected. Checking if drivers are installed."
+            
+            # Check if NVIDIA drivers are installed
             nvidia-smi > /dev/null 2>&1
-            # check if nvidia gpu is activated
+
+            # Nvidia gpu is not detected
             if [ $? -ne 0 ]
             then
-                echo ""
-                echo "Nvidia gpu drivers are not installed, even though installation seemed okay."
-                echo "Please try manually to install nvidia drivers"
-                exit 1
+                echo "Nvidia gpu drivers are not installed."
+                echo "Triying to install gpu drivers..."
+
+                # Check for sudo privileges, dischard output
+                sudo -n true > /dev/null 2>&1
+
+                # Check for sudo privileges
+                if sudo -n true > /dev/null 2>&1; then
+                    echo "You have sudo privileges."
+                else
+                    echo "You don't have sudo privileges. Requesting privileges..."
+                    sudo -v
+                fi
+
+                # Install NVIDIA drivers
+                sudo ubuntu-drivers install
+                handle_error $? "Failed to automatically install NVIDIA drivers. Please install them manually and re-run this script."
+
+
+                echo "Nvidia drivers succesfully installed."
+
+                # reload enviroment variables
+                source ~/.bashrc
+
+                # Verify NVIDIA driver installation
+                nvidia-smi > /dev/null 2>&1
+                # check if nvidia gpu is activated
+                if [ $? -ne 0 ]
+                then
+                    echo ""
+                    echo "Nvidia gpu drivers are not installed, even though installation seemed okay."
+                    echo "Please try manually to install nvidia drivers"
+                    exit 1
+                else
+                    echo ""
+                    echo "nvidia drivers were installed succesfully, ready to continue."
+                fi
             else
-                echo ""
-                echo "nvidia drivers were installed succesfully, ready to continue."
-            fi
-        else
-            echo "The nvidia drivers are also installed, ready to continue."  
-        fi                                          
+                echo "The nvidia drivers are also installed, ready to continue."  
+            fi                                          
+        fi
     fi
 fi
 
@@ -147,12 +185,8 @@ then
 fi
 
 # Check if system is running Ubuntu
-if ! systemctl --version > /dev/null 2>&1
-then
-    echo "Systemd is not running Ubuntu."
-    echo "Need to enable systemd before installing kobuki."
-    exit 1
-fi
+systemctl --version > /dev/null 2>&1
+handle_error $? "Systemd is not running Ubuntu. \n Need to enable systemd before installing kobuki."
 
 # Check if ROS 2 jazzy is installed and activated
 if [ ! $(command -v ros2) ]
@@ -189,6 +223,7 @@ if [ -d ~/ros2_ws ]
 then
     echo "ros2_ws already exists in ~/ros2_ws/src"
     echo "Delete or mv current ros2_ws to continue"
+    rm -rf ~/ros2_ws
     exit 1
 else
     mkdir -p ~/ros2_ws/src
@@ -200,11 +235,7 @@ echo "ros2_ws created successfully."
 echo
 echo "Cloning kobuki repository insude ros2_ws/src ..."
 git clone https://github.com/IntelligentRoboticsLabs/kobuki.git > /dev/null 2>&1
-if [ $? -ne 0 ]
-then
-    echo "Failed to git clone kobuki repository."
-    exit 1
-fi
+handle_error $? "Failed to git clone kobuki repository."
 
 if [ ! -d ~/ros2_ws/src/kobuki ]
 then
@@ -215,30 +246,15 @@ echo "kobuki repository cloned successfully."
 
 
 # Check for sudo privileges, dischard output
-sudo -n true > /dev/null 2>&1
-
-# Check if sudo privileges were granted
-if [ $? -eq 0 ];
-then 
-    echo "You have sudo privileges"
-
-else
-    echo
-    echo "You dont have sudo privileges"
-    # Update sudo timestamp
-    sudo -v
-fi
+check_sudo
 
 # Prepare thirdparty repos
 echo
 echo "Preparing thirdparty repos python3 modules ..."
-sudo apt update  > /dev/null 2>&1; sudo apt install -y python3-vcstool python3-pip python3-rosdep python3-colcon-common-extensions
+update_packages
+sudo apt install -y python3-vcstool python3-pip python3-rosdep python3-colcon-common-extensions
+handle_error $? "Failed to install python3 modules"
 
-if [ $? -ne 0 ]
-then
-    echo "Failed to install python3 modules."
-    exit 1
-fi
 echo "Successfull install of python3 modules."
 
 # Trying to install thirdparty repos
@@ -256,24 +272,15 @@ then
     cd ~/ros2_ws/src
     vcs import < kobuki/thirdparty.repos
 
-    if [ $? -ne 0 ]
-    then 
-        echo
-        echo "Second try of importing thirparty repos from kobuki/thirdparty.repos failed."
-        echo "Exiting install."
-        exit 1
-    fi
+    handle_error $? "Second try of importing thirparty repos from kobuki/thirdparty.repos failed. \n Exiting install."
 fi
 
 # Install libusb, libftdi & libuvc
 echo
 echo "Installing libusb, libftdi & libuvc ..."
 sudo apt install -y libusb-1.0-0-dev libftdi1-dev libuvc-dev
-if [ $? -ne 0 ]
-then
-    echo "Failed to install libusb, libftdi & libuvc."
-    exit 1
-fi
+handle_error $? "Failed to install libusb, libftdi & libuvc."
+
 echo "Successfull install of libusb, libftdi & libuvc."
 
 # Install udev rules from astra camera, kobuki and rplidar
@@ -281,60 +288,31 @@ echo
 echo "Installing udev rules from astra camera, kobuki and rplidar..."
 
 # Check for sudo privileges, dischard output
-sudo -n true > /dev/null 2>&1
-
-# Check if sudo privileges were granted
-if [ $? -eq 0 ]
-then 
-    echo "You have sudo privileges"
-
-else
-    echo "You dont have sudo privileges"
-    # Update sudo timestamp
-    sudo -v
-fi
+check_sudo
 
 cd ~/ros2_ws
 if [ ! -f /etc/udev/rules.d/56-orbbec-usb.rules ]
 then
     sudo cp src/ThirdParty/ros_astra_camera/astra_camera/scripts/56-orbbec-usb.rules /etc/udev/rules.d/
-    if [ $? -ne 0 ]
-    then
-        echo
-        echo "Failed to install udev rules."
-        exit 1
-    fi
+    handle_error $? "Failed to install udev rules."
 fi
 
 if [ ! -f /etc/udev/rules.d/rplidar.rules ]
 then
     sudo cp src/ThirdParty/rplidar_ros/scripts/rplidar.rules /etc/udev/rules.d/
-    if [ $? -ne 0 ]
-    then
-        echo
-        echo "Failed to install udev rules."
-        exit 1
-    fi
+    handle_error $? "Failed to install udev rules."
 fi
 
 if [ ! -f /etc/udev/rules.d/60-kobuki.rules ]
 then
     sudo cp src/ThirdParty/kobuki_ros/60-kobuki.rules /etc/udev/rules.d/
     if [ $? -ne 0 ]
-    then
-        echo
-        echo "Failed to install udev rules."
-        exit 1
-    fi
+    handle_error $? "Failed to install udev rules."
 fi
 
 sudo udevadm control --reload-rules && sudo udevadm trigger
-if [ $? -ne 0 ]
-then
-    echo
-    echo "Installing udev rules failed."
-    exit 1
-fi
+handle_error $? "Installing udev rules failed."
+
 echo "Successfull install of udev rules."
 
 # Move xtion calibration
@@ -347,11 +325,7 @@ then
         mkdir -p ~/.ros/camera_info
     fi
     sudo cp ~/ros2_ws/src/ThirdParty/openni2_camera/openni2_camera/rgb_PS1080_PrimeSense.yaml ~/.ros/camera_info
-    if [ $? -ne 0 ]
-    then
-        echo "Failed to move xtion calibration."
-        exit 1
-    fi
+    handle_error $? "Failed to move xtion calibration."
 fi
 echo "Successfull move of xtion calibration."
 
@@ -362,23 +336,12 @@ echo "About to build ros2_ws project ... "
 if [ -f /etc/ros/rosdep/sources.list.d/20-default.list ]
 then
     sudo rm /etc/ros/rosdep/sources.list.d/20-default.list
-    if [ $? -ne 0 ]
-    then
-        echo
-        echo "Failed to remove /etc/ros/rosdep/sources.list.d/20-default.list"
-        echo "Aborting building proyect."
-        exit 1
-    fi
+    handle_error $? "Failed to remove /etc/ros/rosdep/sources.list.d/20-default.list \n Aborting building proyect."
 fi
 echo
 echo "sudo rosdep init"
 sudo rosdep init
-if [ $? -ne 0 ]
-then
-    echo
-    echo "sudo rosdep init failed. Aborting building proyect."
-    exit 1
-fi
+handle_error $? "sudo rosdep init failed. Aborting building proyect."
 
 echo
 echo "rosdep update"
@@ -394,12 +357,7 @@ echo
 echo "rosdep install --from-paths src --ignore-src -r -y"
 cd ~/ros2_ws
 rosdep install --from-paths src --ignore-src -r -y
-if [ $? -ne 0 ]
-then
-    echo
-    echo "rosdep install --from-paths src --ignore-src -r - failed. Aborting building proyect."
-    exit 1
-fi
+handle_error $? "rosdep install --from-paths src --ignore-src -r - failed. Aborting building proyect."
 
 echo
 echo
@@ -412,7 +370,7 @@ then
     rm /tmp/exit
 fi
 
-konsole -e /bin/bash -i -c 'source /opt/ros/jazzy/setup.bash; source ~/.bashrc; cd ~/ros2_ws; colcon build --symlink-install; echo $? > /tmp/exit; echo ; echo FINISHED' > /dev/null 2>&1
+konsole -e /bin/bash -i -c 'source /opt/ros/jazzy/setup.bash; cd ~/ros2_ws; colcon build --symlink-install; echo $? > /tmp/exit; echo ; echo FINISHED; read' > /dev/null 2>&1
 
 # Wait for a while for the process to potentially start
 sleep 5
@@ -449,7 +407,7 @@ echo
 echo "Running again colcon build to check for errors..."
 echo "Going to take some time, be patient. Grab a coffe."
 # Run a command in a new terminal and write its exit status to a temp file
-konsole -e /bin/bash -i -c 'source /opt/ros/jazzy/setup.bash; source ~/.bashrc; cd ~/ros2_ws; colcon build --symlink-install --parallel-workers 1; echo $? > /tmp/exit; echo ; echo FINISHED' > /dev/null 2>&1
+konsole -e /bin/bash -i -c 'source /opt/ros/jazzy/setup.bash; source ~/.bashrc; cd ~/ros2_ws; colcon build --symlink-install --parallel-workers 1; echo $? > /tmp/exit; echo ; echo FINISHED; read' > /dev/null 2>&1
 
 # Wait for a while for the process to potentially start
 sleep 5
@@ -500,13 +458,7 @@ echo "Setup Gazebo to find models - GAZEBO_MODEL_PATH and project path"
 
 # Testing if GAZEBO_MODEL_PATH is set
 source /usr/share/gazebo/setup.bash
-if [ $? -ne 0 ]
-then
-    echo
-    echo "Failed to source /usr/share/gazebo/setup.bash"
-    echo "Colcon build finished un-successfully as above error suggests."
-    exit 1
-fi
+handle_error $? "Failed to source /usr/share/gazebo/setup.bash \n Colcon build finished un-successfully as above error suggests."
 
 # Check if gazebo underlay is already sourced in bashrc
 if cat ~/.bashrc | grep -q "source /usr/share/gazebo/setup.bash"
@@ -525,12 +477,7 @@ fi
 
 # Testing if ros2_ws project path is set
 source ~/ros2_ws/install/setup.bash
-if [ $? -ne 0 ]
-then
-    echo "Failed to source ~/ros2_ws/install/setup.bash"
-    echo "Colcon build finished un-successfully as above error suggests."
-    exit 1
-fi
+handle_error $? "Failed to source ~/ros2_ws/install/setup.bash \n Colcon build finished un-successfully as above error suggests."
 
 # Check if gazebo underlay is already sourced in bashrc
 if cat ~/.bashrc | grep -q "source ~/ros2_ws/install/setup.bash"

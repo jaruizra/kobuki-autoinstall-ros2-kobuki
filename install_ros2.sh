@@ -1,45 +1,16 @@
 #!/bin/bash -i
 
-# Variables
-BASHRC="$HOME/.bashrc"
-
-# Function to handle errors and exit
-handle_error() {
-    local status=$1
-    local message=$2
-    if [ $status -ne 0 ]
-    then
-        echo
-        echo "$message"
-        echo "Exiting..."
-        exit 1
-    fi
-}
-
-# Function to check for sudo privileges
-check_sudo() {
-    if ! sudo -n true > /dev/null 2>&1
-    then
-        echo "You don't have sudo privileges. Requesting privileges..."
-        sudo -v
-        handle_error $? "Failed to obtain sudo privileges."
-    fi
-}
-
-# Function to update package list
-update_packages() {
-    echo
-    echo "Running apt update..."
-    check_sudo
-    sudo apt update > /dev/null 2>&1
-    handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
-    echo "sudo apt update finished."
+# Function to source additional functions and variables
+source_functions() {
+    FUNCTIONS_PATH="./scripts/functions.sh"
+    source "$FUNCTIONS_PATH"
+    handle_error $? "Failed to source $FUNCTIONS_PATH. Please check the file."
 }
 
 # Function to set locale to UTF-8
 set_locale() {
     echo
-    echo "Checking locale settings ..."
+    status_prompt $NOTE "Checking locale settings ..."
     if locale | grep -q "UTF-8"
     then
         echo "Locale is already set to UTF-8."
@@ -76,13 +47,13 @@ set_locale() {
         locale | grep -q "UTF-8"
         handle_error $? "Failed to set locale to UTF-8"
     fi
-    echo "Locale is set to UTF-8."
+    status_prompt $OK "Locale is set to UTF-8."
 }
 
 # Function to enable the ROS 2 repository
 enable_repository() {
     echo
-    echo "Adding ROS 2 repository..."
+    status_prompt $NOTE "Adding ROS 2 repository..."
 
     # Check for sudo privileges
     check_sudo
@@ -111,7 +82,7 @@ enable_repository() {
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null 2>&1
     handle_error $? "Failed to add the repository to sources list."
 
-    echo "ROS 2 repository added."
+    status_prompt $OK "ROS 2 repository added."
 }
 
 # Function to check if ROS 2 is already sourced
@@ -119,12 +90,12 @@ source_ros2() {
     SOURCE_SETTING="source /opt/ros/jazzy/setup.bash"
     
     echo
-    echo "Checking if ROS 2 is already sourced in bashrc ..."
+    status_prompt $NOTE "Checking if ROS 2 is already sourced in bashrc ..."
 
     if grep -q "^# *$SOURCE_SETTING" "$BASHRC"
     then
         # Uncomment the setting if it exists
-        sed -i "/^# *$SOURCE_SETTING/s/^# *//" "$BASHRC"
+        sed -i "s|^# *$SOURCE_SETTING|$SOURCE_SETTING|" "$BASHRC"
     else
         # Add the setting to the script if not found
         {
@@ -134,20 +105,28 @@ source_ros2() {
         } >> "$BASHRC"
     fi
 
-    echo "ROS2 Jazzy is sourced in bashrc."
+    status_prompt $OK "ROS2 Jazzy is sourced in bashrc."
 }
+
+# Source functions and variables
+source_functions
+
+# Source .bashrc for environment variables
+source "$BASHRC"
+handle_error $? "Failed to source "$BASHRC"."
+
+clear
+
+# Start message
+status_prompt $NOTE "Attempting to install ROS2 Jazzy..."
 
 # Check number of arguments
 if [ $# -ne 0 ]
 then
-    echo "This script does not take any arguments."
+    #echo "This script does not take any arguments."
+    status_prompt $ERROR "This script does not take any arguments."
     exit 1
 fi
-
-# Ubuntu Shell is none interactive
-source "$BASHRC"
-handle_error $?  "Failed to source $BASHRC. Please check your bash configuration."
-
 
 ### System setup
 
@@ -164,17 +143,17 @@ update_packages
 
 # Upgrade system packages
 echo
-echo "Upgrading Ubuntu packages ..."
+status_prompt $NOTE "Upgrading Ubuntu packages ..."
 sudo apt upgrade -y > /dev/null 2>&1
 handle_error $? "Failed to upgrade."
-echo "Ubuntu packages upgraded."
+status_prompt $OK "Ubuntu packages upgraded."
 
 # Install ROS 2 Jazzy Desktop
 echo 
-echo "About to install ROS 2 Desktop..."
+status_prompt $NOTE "About to install ROS 2 Desktop..."
 sudo apt install -y ros-jazzy-desktop > /dev/null 2>&1
 handle_error $? "Failed to install ROS 2 Jazzy Desktop."
-echo "ROS2 Jazzy Installation succesful."
+status_prompt $OK "ROS2 Jazzy Installation succesful."
 
 
 ### Setup environment
@@ -184,17 +163,17 @@ source_ros2
 
 # Source ROS 2 setup script for the current session
 echo
-echo "Sourcing ROS 2 setup script for the current session..."
+status_prompt $NOTE "Sourcing ROS 2 setup script for the current session..."
 source /opt/ros/jazzy/setup.bash
 
 # Final message to user
-clear
+#clear
 echo
-echo -e "ROS 2 has finished installing. To use ROS 2 in your current shell, run:\n"
+colorize_prompt 4 "ROS 2 has finished installing. To use ROS 2 in your current shell, run:\n"
 echo -e "\tsource ~/.bashrc\n"
 echo
-echo -e "Then, verify the installation by typing:\n"
+colorize_prompt 4 "Then, verify the installation by typing:\n"
 echo -e "\tros2\n"
 echo
-echo -e "If you encounter any issues, please refer to the ROS 2 documentation or try running the script again."
-echo -e "Goodbye! :)"
+status_prompt $ATT "If you encounter any issues, please refer to the ROS 2 documentation or try running the script again."
+colorize_prompt 4 "Goodbye! :)"

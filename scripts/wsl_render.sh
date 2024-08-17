@@ -1,29 +1,10 @@
-#!/bin/bash -i
+#!/bin/bash
 
-# Variables
-BASHRC="$HOME/.bashrc"
-
-# Function to handle errors and exit
-handle_error() {
-    local status=$1
-    local message=$2
-    if [ $status -ne 0 ]
-    then
-        echo
-        echo "$message"
-        echo "Exiting..."
-        exit 1
-    fi
-}
-
-# Function to check for sudo privileges
-check_sudo() {
-    if ! sudo -n true > /dev/null 2>&1
-    then
-        echo "You don't have sudo privileges. Requesting privileges..."
-        sudo -v
-        handle_error $? "Failed to obtain sudo privileges."
-    fi
+# Function to source additional functions and variables
+source_functions() {
+    FUNCTIONS_PATH="./scripts/functions.sh"
+    source "$FUNCTIONS_PATH"
+    handle_error $? "Failed to source $FUNCTIONS_PATH. Please check this file"
 }
 
 # Function to enable CPU rendering
@@ -67,7 +48,8 @@ enable_nvidia_rendering () {
 get_user_input() {
     while true; do
         echo ""
-        read -p "Does the box show a black screen? (Y/N): " yn
+        read -p "$(colorize_prompt 166 "Does the box show a black screen? (Y/N): ")" yn
+        #read -p "Does the box show a black screen? (Y/N): " yn
         case $yn in
             [Yy]* ) return 1 ;;
             [Nn]* ) return 0 ;;
@@ -79,9 +61,9 @@ get_user_input() {
 test_gpu () {
     clear
     echo ""
-    echo "**************************"
-    echo "Testing WSL2 GPU Rendering"
-    echo "**************************"
+    colorize_prompt 1 "**************************"
+    colorize_prompt 1 "Testing WSL2 GPU Rendering"
+    colorize_prompt 1 "**************************"
     echo ""
     echo "The script is going to test if WSL2 default rendering GPU works by running the command: glxgears."
     echo "A small box should appear on the screen."
@@ -115,18 +97,30 @@ test_gpu () {
     trap - EXIT
 
     if [ $RESULT -eq 1 ]; then
-        echo "Enabling CPU rendering."
+        status_prompt $NOTE "The current OpenGL doesnt work, trying to fix it..."
         return 1
     else
-        echo "Enabling GPU rendering."
+        status_prompt $NOTE "The current OpenGL seems to work..."
         return 0
     fi
 }
 
+# Source functions and variables
+source_functions
+
+# Source .bashrc for environment variables
+source "$BASHRC"
+handle_error $? "Failed to source "$BASHRC"."
+
+clear
+
+# Start message
+status_prompt $NOTE "Attempting to setup WSL2 openGL renderer..."
+
 # Check number of arguments
 if [ $# -ne 0 ]
 then
-    echo "This script does not take any arguments."
+    status_prompt $ERROR "This script does not take any arguments."
     exit 1
 fi
 
@@ -137,7 +131,7 @@ check_sudo
 packages="konsole mesa-utils wget"
 
 echo
-echo "Installing dependencies ..."
+echo "Installing dependencies..."
 
 # Install packages
 for p in $packages
@@ -153,10 +147,7 @@ do
         echo "Package $p installed."
     fi
 done
-
-# Ubuntu Shell is now interactive
-source "$BASHRC"
-handle_error $? "Failed to source $BASHRC"
+status_prompt $OK "Succesfully installed deppendencies"
 
 # Installing nvidia drivers, currently no other easy way to check if nvidia is on the system and enable it
 # Check if NVIDIA drivers are installed
@@ -164,6 +155,7 @@ nvidia-smi > /dev/null 2>&1
 
 if [ $? -ne 0 ]
 then
+    status_prompt $NOTE "Nvidia drivers might not be installed, installing..."
     # Check for sudo privileges
     check_sudo
 
@@ -174,9 +166,10 @@ then
     sudo dpkg -i /tmp/cuda-keyring_1.1-1_all.deb
     handle_error $? "Failed to install /tmp/cuda-keyring_1.1-1_all.deb"
 
-    sudo apt-get update
+    update_packages
     sudo apt-get -y install cuda-toolkit-12-5
     handle_error $? "Failed to install cuda-toolkit-12-5"
+    status_prompt $OK "nvidia driver succesfully installed."
 fi
 
 # check again if nvidia gpu is detected
@@ -186,19 +179,31 @@ if [ $? -ne 0 ]
 then
     # No nvidia gpu detected, check glxgears
     clear
-    echo "No nvidia gpu detected, running glxgears to test current."
+    status_prompt $ATT "No nvidia gpu detected, running glxgears to test current gpu."
 
     # Test igpu / amd gpu rendering  
-    if test_gpu
+    if ! test_gpu
     then
         # enabling cpu rendering
         enable_cpu_rendering
         handle_error $? "Error while enabling cpu rendering"
+        status_prompt $ok "Succesfully enabled CPU rendering."
+
     fi
-    # In case its working, best to not touch it    
+    # In case its working, best to not touch it
+    status_prompt $OK "Current GPU seems to work, Finishing."   
 
 else
+    status_prompt $OK "Nvidia gpu detected, enabling nvidia rendering..."
     # nvidia gpu detected
     enable_nvidia_rendering
     handle_error $? "Error while enabling nvidia rendering"
+    status_prompt $ok "Succesfully enabled NVIDIA rendering."
+
 fi
+
+# Source .bashrc for environment variables
+source "$BASHRC"
+handle_error $? "Failed to source "$BASHRC"."
+
+exit 0
