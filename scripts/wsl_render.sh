@@ -73,7 +73,6 @@ get_user_input() {
 }
 
 test_gpu () {
-    clear
     echo ""
     colorize_prompt 1 "**************************"
     colorize_prompt 1 "Testing WSL2 GPU Rendering"
@@ -125,8 +124,6 @@ source_functions
 # Source .bashrc for environment variables
 source "$BASHRC"
 handle_error $? "Failed to source "$BASHRC"."
-
-clear
 
 # Start message
 status_prompt $NOTE "Attempting to setup WSL2 openGL renderer..."
@@ -197,7 +194,6 @@ nvidia-smi > /dev/null 2>&1
 if [ $? -ne 0 ] 
 then
     # No nvidia gpu detected, check glxgears
-    clear
     status_prompt $ATT "No nvidia gpu detected, running glxgears to test current gpu."
 
     # Test igpu / amd gpu rendering  

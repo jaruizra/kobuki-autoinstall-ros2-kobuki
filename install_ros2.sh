@@ -27,14 +27,12 @@ set_locale() {
     status_prompt $NOTE "Checking locale settings ..."
     if locale | grep -q "UTF-8"
     then
-        echo "Locale is already set to UTF-8."
+        status_prompt $OK "Locale is already set to UTF-8."
     else
         # Updating packages
         update_packages
         handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
-        echo "sudo apt update finished."
-        handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
-        echo "sudo apt update finished."
+        status_prompt $OK "sudo apt update finished."
 
         # Installing locales package
         sudo apt install -y locales > /dev/null 2>&1
@@ -84,12 +82,12 @@ enable_repository() {
     # Enabling the Universe repository
     sudo add-apt-repository -y universe > /dev/null 2>&1
     handle_error $? "Failed to add universe repository."
-    echo "Ubuntu Universe repository is enabled."
+    status_prompt $OK "Ubuntu Universe repository is enabled."
 
     # Updating package list
     update_packages
     handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
-    echo "sudo apt update finished."
+    status_prompt $OK "sudo apt update finished."
 
     # Installing curl to download ROS 2 GPG key
     sudo apt install -y curl > /dev/null 2>&1
@@ -162,7 +160,7 @@ enable_repository
 # Update apt repositories after adding ros2 repo
 update_packages
 handle_error $? "sudo apt update failed. Please check your network connection or apt configuration."
-echo "sudo apt update finished."
+status_prompt $OK "sudo apt update finished."
 
 # Upgrade system packages
 echo
@@ -174,7 +172,7 @@ status_prompt $OK "Ubuntu packages upgraded."
 # Install ROS 2 Jazzy Desktop
 echo 
 status_prompt $NOTE "About to install ROS 2 Desktop..."
-sudo apt install -y ros-jazzy-desktop > /dev/null 2>&1
+sudo apt install -y ros-jazzy-desktop
 handle_error $? "Failed to install ROS 2 Jazzy Desktop."
 status_prompt $OK "ROS2 Jazzy Installation succesful."
 

@@ -28,10 +28,8 @@ source_functions
 source "$BASHRC"
 handle_error $? "Failed to source "$BASHRC"."
 
-clear
-
 # Start message
-colorize_prompt $NOTE "Attempting to install EIF repo..."
+status_prompt $NOTE "Attempting to install EIF repo..."
 
 # Check number of arguments
 if [ $# -ne 0 ]
