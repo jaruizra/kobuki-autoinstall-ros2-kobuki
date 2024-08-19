@@ -61,20 +61,36 @@ printf "\n%.0s" {1..3}
 
 # Welcome message
 colorize_prompt 166 "Welcome to Jaruizra Kobuki installation script!"
-echo
-status_prompt $NOTE "You should keep atention for script asking user inputs."
-echo
-status_prompt $ATT "Run a full system update, upgrade and then reboot before executing the script! (Highly Recommended)"
+colorize_prompt 7 "You should keep atention for script asking user inputs."
+colorize_prompt 7 "Run a full system update, upgrade and then reboot before executing the script! (Highly Recommended)"
 echo
 
 # Initialize variables to store user responses
-nvidia=""
+nvidia_system=""
+nvidia_drivers=""
+continue=""
 
-# Collect user responses to all questions
-printf "\n%.0s" {1..3}
-status_prompt $ATT "ANSWER THE FOLOWING QUESTIONS RELATED TO THE SCRIPT FUNCTIONALITY!"
-echo
-ask_yes_no "Do you want the setup to try and setup install Nvidida gpu drivers(if using wsl2 you should do it)" nvidia
+# Check if the nvidia gpu is detected or not
+if ! lspci | grep -i nvidia > /dev/null 2>&1; then
+    nvidia_system="N"
+    status_prompt $ATT "It seems like you don't have an NVIDIA GPU installed or enabled in your system."
+else
+    nvidia_system="Y"
+fi
+
+# Check if the NVIDIA drivers are installed
+if ! nvidia-smi > /dev/null 2>&1; then
+    nvidia_drivers="N"
+    status_prompt $NOTE "NVIDIA GPU drivers don't seem to be installed. The script will attempt to install them."
+else
+    nvidia_drivers="Y"
+fi
+
+# If the user chooses not to continue, stop the script
+if [[ "$continue" == "N" ]]; then
+    status_prompt $OK "The script will stop. Thank you!"
+    exit 0
+fi
 
 # Check system memory
 MEM=$(grep MemTotal /proc/meminfo | awk '{print $2}')
@@ -82,14 +98,25 @@ MEM=$(echo "scale=2; $MEM / 1000000" | bc)
 
 SWAP=$(grep SwapTotal /proc/meminfo | awk '{print $2}')
 SWAP=$(echo "scale=2; $SWAP / 1000000" | bc)
-
-# Check if total memory and swap is less than 16GB
 TOTAL_MEM=$(echo "$MEM + $SWAP" | bc)
+
+
 if (( $(echo "$TOTAL_MEM < 16" | bc -l) )); then
-    echo
-    status_prompt $NOTE "Your system memory (ram + swap) is lower than 16GB, you have $TOTAL_MEM GB. Compiling could have errors."
+    status_prompt $NOTE "Your system memory (RAM + SWAP) is less than 16GB. You have $TOTAL_MEM GB. Compiling could encounter issues."
 fi
 
+# Combine conditions and prompt the user
+if [[ "$nvidia_system" == "N" || "$nvidia_drivers" == "N" || $(echo "$TOTAL_MEM < 16" | bc -l) -eq 1 ]]; then
+    echo
+    colorize_prompt 166 "Attention, found issues!"
+    ask_yes_no "Your system has issues with NVIDIA GPU, drivers, or memory. Do you still want to continue with the script?" continue
+fi
+
+# If the user chooses not to continue, stop the script
+if [[ "$continue" == "N" ]]; then
+    status_prompt $OK "The script will stop. Thank you!"
+    exit 0
+fi
 
 # Check for sudo privileges
 check_sudo
